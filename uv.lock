@@ -48,7 +48,7 @@ wheels = [
 ]
 
 [[package]]
-name = "sql2graph"
+name = "sql2neo4j"
 version = "0.1.1"
 source = { editable = "." }
 dependencies = [

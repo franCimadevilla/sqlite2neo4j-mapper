@@ -1,6 +1,6 @@
-# sql2graph
+# sql2neo4j
 
-`sql2graph` is a Python library that migrates relational SQLite databases into
+`sql2neo4j` is a Python library that migrates relational SQLite databases into
 Neo4j graph databases using a schema-driven approach.
 
 It automatically:
