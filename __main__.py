@@ -1,5 +1,6 @@
 from sql2graph.logging_config import setup_logging
-from sql2graph.pipeline import SQLToNeo4jPipeline
+from sql2graph.pipeline import LocalSQL2Neo4jPipeline, RemoteSQL2Neo4jPipeline
+
 
 def main():
     """
@@ -8,7 +9,31 @@ def main():
     """
     setup_logging()
 
-    pipeline = SQLToNeo4jPipeline(
+    local_database_process()
+
+    remote_database_process()
+
+
+def remote_database_process():
+    # Pipeline invoke for Remote Server
+    pipeline = RemoteSQL2Neo4jPipeline(
+        sql_server_host="relational.fel.cvut.cz",
+        sql_server_user="guest",
+        sql_server_password="ctu-relational",
+        sql_server_database="CORA",
+        neo4j_uri="bolt://localhost:7687",
+        neo4j_user="neo4j",
+        neo4j_password="neo4jPasswd",
+        dry_run=False
+    )
+
+    pipeline.run()
+
+
+def local_database_process():
+    # Pipeline invoke for Local File
+
+    pipeline = LocalSQL2Neo4jPipeline(
         sqlite_path="data/olist.sqlite",
         neo4j_uri="bolt://localhost:7687",
         neo4j_user="neo4j",

@@ -5,18 +5,31 @@ import logging
 class SQL2GraphMapper():
     """SQL Mapper to a Graph database. Constrained to Neo4j Community edition database driver, that has only one graph per database. 
     """
-    def __init__(self, schema : dict, db_path : str|None = None, db_driver=None|Protocol, relations_map : dict|None = None):
+    def __init__(self, schema : dict, db_type : str = "sqlite", db_config : dict | None = None, db_driver=None|Protocol, relations_map : dict|None = None):
         if db_driver == None:
             raise Exception(f"Database driver cannot be None.")
     
         self.driver = db_driver
         self.schema = schema
-        self.db_path = db_path
+        self.db_type = db_type
+        self.db_config = db_config or {}
         self.relations_map = relations_map or {}
         self.logger = logging.getLogger(self.__class__.__name__)
 
+    def _get_connection(self):
+        if self.db_type == "sqlite":
+            return sqlite3.connect(self.db_config.get("db_path"))
+        elif self.db_type == "mariadb":
+            try:
+                import mysql.connector
+            except ImportError:
+                raise ImportError("mysql-connector-python is required for MariaDB support")
+            return mysql.connector.connect(**self.db_config)
+        else:
+            raise ValueError(f"Unsupported database type: {self.db_type}")
+
     def populate_db(self):
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         self.logger.info("Starting DB population")
@@ -150,4 +163,3 @@ class SQL2GraphMapper():
         col = fk["column"].lower()
         
         return self.relations_map.get(col, col).upper()
-        

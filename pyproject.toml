@@ -1,11 +1,12 @@
 [project]
-name = "sql2neo4j"
-version = "0.1.0"
+name = "sql2graph"
+version = "0.1.1"
 description = "Relational (SQLite) to Neo4j graph mapper"
 dependencies = [
-    "neo4j>=5.0"
+    "neo4j>=5.0",
+    "mysql-connector-python"
 ]
 
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"

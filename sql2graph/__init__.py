@@ -1,5 +1,15 @@
 from .schema_reader import SchemaReader
 from .populate_graph import SQL2GraphMapper
-from .pipeline import SQL2Neo4jPipeline
+from .pipeline import (
+    AbstractSQL2Neo4jPipeline,
+    LocalSQL2Neo4jPipeline,
+    RemoteSQL2Neo4jPipeline
+)
 
-__all__ = ["SchemaReader", "SQL2GraphMapper", "SQL2NeoPipeline"]
+__all__ = [
+    "SchemaReader",
+    "SQL2GraphMapper",
+    "AbstractSQL2Neo4jPipeline",
+    "LocalSQL2Neo4jPipeline",
+    "RemoteSQL2Neo4jPipeline"
+]
