@@ -1,5 +1,5 @@
-from sql2graph.logging_config import setup_logging
-from sql2graph.pipeline import LocalSQL2Neo4jPipeline, RemoteSQL2Neo4jPipeline
+from sql2neo4j.logging_config import setup_logging
+from sql2neo4j.pipeline import LocalSQL2Neo4jPipeline, RemoteSQL2Neo4jPipeline
 
 
 def main():
