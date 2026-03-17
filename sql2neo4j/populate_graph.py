@@ -5,7 +5,7 @@ import logging
 class SQL2GraphMapper():
     """SQL Mapper to a Graph database. Constrained to Neo4j Community edition database driver, that has only one graph per database. 
     """
-    def __init__(self, schema : dict, db_type : str = "sqlite", db_config : dict | None = None, db_driver=None|Protocol, relations_map : dict|None = None):
+    def __init__(self, schema : dict, db_type : str = "sqlite", db_config : dict | None = None, db_driver=None|Protocol, relations_map : dict|None = None, batch_size : int = 5000):
         if db_driver == None:
             raise Exception(f"Database driver cannot be None.")
     
@@ -15,6 +15,7 @@ class SQL2GraphMapper():
         self.db_config = db_config or {}
         self.relations_map = relations_map or {}
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.batch_size = batch_size
 
     def _get_connection(self):
         if self.db_type == "sqlite":
@@ -48,15 +49,21 @@ class SQL2GraphMapper():
 
                 # 2. Relationships — BATCHED VERSION
                 for fk in details["FKs"]:
+                    col = fk['column']
+                    ref_col = fk['ref_column']
+                    if col not in self.relations_map:
+                        self.logger.warning(f"Skipping unmapped FK in {table_name}: {col} → {ref_col}")
+                        continue
+
                     rel_type = self._map_relationships(fk)
                     self.logger.debug(f"Creating relationships {table_name} -> {fk['ref_table']} [{rel_type}]")
 
-                    batch_size = 5000  # tune: 2000–10000 depending on memory/network
+                    batch_size = self.batch_size
                     offset = 0
 
                     while True:
                         query = f"""
-                            SELECT {fk['column']}, {fk['ref_column']}
+                            SELECT {col}, {ref_col}
                             FROM {table_name}
                             LIMIT {batch_size} OFFSET {offset}
                         """

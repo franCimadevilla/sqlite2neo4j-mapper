@@ -1,6 +1,6 @@
 [project]
 name = "sql2neo4j"
-version = "0.2"
+version = "0.2.1"
 description = "Relational (SQLite) to Neo4j graph mapper"
 dependencies = [
     "neo4j>=5.0",
