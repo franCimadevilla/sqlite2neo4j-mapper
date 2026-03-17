@@ -51,45 +51,46 @@ class SQL2GraphMapper():
                 for fk in details["FKs"]:
                     col = fk['column']
                     ref_col = fk['ref_column']
+                    ref_table = fk['ref_table']
+
                     if col not in self.relations_map:
                         self.logger.warning(f"Skipping unmapped FK in {table_name}: {col} → {ref_col}")
                         continue
 
                     rel_type = self._map_relationships(fk)
-                    self.logger.debug(f"Creating relationships {table_name} -> {fk['ref_table']} [{rel_type}]")
+                    self.logger.info(f"Mapping {table_name}.{col} → {rel_type}")
 
-                    batch_size = self.batch_size
                     offset = 0
-
                     while True:
                         query = f"""
-                            SELECT {col}, {ref_col}
+                            SELECT {col}, {col}  
                             FROM {table_name}
-                            LIMIT {batch_size} OFFSET {offset}
+                            LIMIT {self.batch_size} OFFSET {offset}
                         """
+
                         cursor.execute(query)
                         relations_batch = cursor.fetchall()
 
                         if not relations_batch:
                             break
 
-                        self.logger.debug(f"{table_name} → {fk['ref_table']}: processing batch {offset // batch_size + 1} ({len(relations_batch)} rows)")
+                        self.logger.debug(f"{table_name} → {ref_table} [{rel_type}]: batch {offset // self.batch_size + 1} ({len(relations_batch)} rows)")
 
-                        for a_val, b_val in relations_batch:
+                        for source_id, target_id in relations_batch:  
                             try:
                                 session.run(
                                     f"""
-                                    MATCH (a:{table_name} {{{fk['column']}: $a}})
-                                    MATCH (b:{fk['ref_table']} {{{fk['ref_column']}: $b}})
+                                    MATCH (a:{table_name} {{{col}: $source}})
+                                    MATCH (b:{ref_table} {{{ref_col}: $target}})
                                     MERGE (a)-[:{rel_type}]->(b)
                                     """,
-                                    a=a_val,
-                                    b=b_val
+                                    source=source_id,
+                                    target=target_id
                                 )
                             except Exception as e:
-                                self.logger.error(f"Failed rel {a_val} → {b_val}", exc_info=e)
+                                self.logger.error(f"Failed {rel_type} {source_id} → {target_id}", exc_info=e)
 
-                        offset += batch_size
+                        offset += self.batch_size
 
             conn.close()
         self.logger.info("DB population finished")

@@ -12,13 +12,14 @@ class AbstractSQL2Neo4jPipeline(ABC):
         neo4j_uri: str,
         neo4j_user: str,
         neo4j_password: str,
+        tables_order: list,
         relations_map: dict | None = None,
         dry_run: bool = False,
         connection_timeout: int = 600,
         read_timeout: int = 1200,
         write_timeout: int = 60,
         raise_on_warnings: bool = False,
-        batch_size : int = 5000
+        batch_size : int = 5000,
     ):
         self.neo4j_uri = neo4j_uri
         self.neo4j_user = neo4j_user
@@ -30,6 +31,7 @@ class AbstractSQL2Neo4jPipeline(ABC):
         self.write_timeout = write_timeout
         self.raise_on_warnings = raise_on_warnings
         self.batch_size = batch_size
+        self.tables_order = tables_order or []
 
     @abstractmethod
     def _get_db_type(self) -> str:
@@ -49,8 +51,11 @@ class AbstractSQL2Neo4jPipeline(ABC):
         schema_reader = SchemaReader(db_type=db_type, **db_config)
         schema = schema_reader.extract_schema()
 
+        # Reorder schema tables
+        if self.tables_order:
+            schema = { key: schema[key] for key in self.tables_order if key in schema }
+            
         logger.info(f"{len(schema)} tables detected")
-
         if self.dry_run:
             logger.warning("DRY RUN enabled — no data will be written to Neo4j")
             print(schema)
@@ -81,15 +86,17 @@ class LocalSQL2Neo4jPipeline(AbstractSQL2Neo4jPipeline):
         neo4j_uri: str,
         neo4j_user: str,
         neo4j_password: str,
+        tables_order: list,
         relations_map: dict | None = None,
         dry_run: bool = False,
+        connection_timeout: int = 1200,
         read_timeout: int = 1200,
         write_timeout: int = 60,
         raise_on_warnings: bool = False,
         batch_size : int = 5000
     ):
         super().__init__(
-            neo4j_uri, neo4j_user, neo4j_password, relations_map, dry_run, read_timeout, write_timeout, raise_on_warnings, batch_size
+            neo4j_uri, neo4j_user, neo4j_password, tables_order, relations_map, dry_run, connection_timeout, read_timeout, write_timeout, raise_on_warnings, batch_size
         )
         self.sqlite_path = sqlite_path
 
@@ -106,19 +113,21 @@ class RemoteSQL2Neo4jPipeline(AbstractSQL2Neo4jPipeline):
         sql_server_user: str,
         sql_server_password: str,
         sql_server_database: str,
+        tables_order : list,
         neo4j_uri: str,
         neo4j_user: str,
         neo4j_password: str,
         relations_map: dict | None = None,
         dry_run: bool = False,
         sql_server_port: int = 3306,
+        connection_timeout: int = 1200,
         read_timeout: int = 1200,
         write_timeout: int = 60,
         raise_on_warnings: bool = False,
-        batch_size : int = 5000
+        batch_size : int = 5000,
     ):
         super().__init__(
-            neo4j_uri, neo4j_user, neo4j_password, relations_map, dry_run, read_timeout, write_timeout, raise_on_warnings, batch_size
+            neo4j_uri, neo4j_user, neo4j_password, tables_order, relations_map, dry_run, connection_timeout, read_timeout, write_timeout, raise_on_warnings, batch_size
         )
         self.sql_server_host = sql_server_host
         self.sql_server_user = sql_server_user
