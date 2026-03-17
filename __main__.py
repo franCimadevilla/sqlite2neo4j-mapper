@@ -9,7 +9,7 @@ def main():
     """
     setup_logging()
 
-    local_database_process()
+    #local_database_process()
 
     remote_database_process()
 
@@ -24,7 +24,12 @@ def remote_database_process():
         neo4j_uri="bolt://localhost:7687",
         neo4j_user="neo4j",
         neo4j_password="neo4jPasswd",
-        dry_run=False
+        dry_run=False,
+        relations_map={
+            "paper_id":"HAS_WORD",
+            "citing_paper_id":"CITES",
+            "cited_paper_id":"CITED_BY"
+        },
     )
 
     pipeline.run()

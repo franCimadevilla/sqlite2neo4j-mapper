@@ -98,6 +98,11 @@ class RemoteSQL2Neo4jPipeline(AbstractSQL2Neo4jPipeline):
         relations_map: dict | None = None,
         dry_run: bool = False,
         sql_server_port: int = 3306,
+        connection_timeout: int = 600,
+        read_timeout: int = 1200,
+        write_timeout: int = 60,
+        raise_on_warnings: bool = False
+
     ):
         super().__init__(
             neo4j_uri, neo4j_user, neo4j_password, relations_map, dry_run
@@ -107,6 +112,10 @@ class RemoteSQL2Neo4jPipeline(AbstractSQL2Neo4jPipeline):
         self.sql_server_password = sql_server_password
         self.sql_server_database = sql_server_database
         self.sql_server_port = sql_server_port
+        self.connection_timeout = connection_timeout
+        self.read_timeout = read_timeout
+        self.write_timeout = write_timeout
+        self.raise_on_warnings = raise_on_warnings
 
     def _get_db_type(self) -> str:
         return "mariadb"
@@ -118,4 +127,8 @@ class RemoteSQL2Neo4jPipeline(AbstractSQL2Neo4jPipeline):
             "password": self.sql_server_password,
             "database": self.sql_server_database,
             "port": self.sql_server_port,
+            "connection_timeout": self.connection_timeout,      # seconds
+            "read_timeout": self.read_timeout,           # important for large fetches
+            "write_timeout": self.write_timeout,
+            "raise_on_warnings": self.raise_on_warnings,
         }

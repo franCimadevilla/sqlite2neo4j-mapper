@@ -34,60 +34,57 @@ class SQL2GraphMapper():
         
         self.logger.info("Starting DB population")
         
-        with self.driver.session() as session:  # Session scope for neo4j db
-
-            # Clear graph
-            self.logger.debug("Clearing graph")
+        with self.driver.session() as session:
             session.run("MATCH (n) DETACH DELETE n")
-
-            # Create constraints to optimize
-            self.logger.info("Creating constraints")
-            self._create_constraints(session)    
+            self._create_constraints(session)
 
             for table_name, details in self.schema.items():
                 self.logger.info(f"Processing table: {table_name}")
 
-                ## 1. Add nodes 
-                cursor.execute(f"SELECT * FROM {table_name}; ")
+                # 1. Nodes (already batched — good)
+                cursor.execute(f"SELECT * FROM {table_name}")
                 rows = cursor.fetchall()
-                self.logger.debug(f"{table_name}: {len(rows)} rows")
-
                 self._batch_insert_nodes(session, table_name, details, rows)
-                
-                ## 2. Add relationships
+
+                # 2. Relationships — BATCHED VERSION
                 for fk in details["FKs"]:
                     rel_type = self._map_relationships(fk)
-                    self.logger.debug(
-                        f"Creating relationships {table_name} -> {fk['ref_table']} [{rel_type}]"
-                    )
+                    self.logger.debug(f"Creating relationships {table_name} -> {fk['ref_table']} [{rel_type}]")
 
-                    cursor.execute(
-                        f"SELECT {fk['column']}, {fk['ref_column']} FROM {table_name}"
-                    )
-                    relations = cursor.fetchall()
+                    batch_size = 5000  # tune: 2000–10000 depending on memory/network
+                    offset = 0
 
-                    for a_val, b_val in relations:
-                        try:
-                            session.run(
-                                f"""
-                                MATCH (a:{table_name} {{{fk['column']}: $a}})
-                                MATCH (b:{fk['ref_table']} {{{fk['ref_column']}: $b}})
-                                MERGE (a)-[:{rel_type}]->(b)
-                                """,
-                                a=a_val,
-                                b=b_val
-                            )
-                        except Exception as e:
-                            self.logger.error(
-                                f"Failed relationship {table_name}.{fk['column']} -> "
-                                f"{fk['ref_table']}.{fk['ref_column']} "
-                                f"({a_val} -> {b_val})",
-                                exc_info=e
-                            )
-            
-            #end outter for scope
+                    while True:
+                        query = f"""
+                            SELECT {fk['column']}, {fk['ref_column']}
+                            FROM {table_name}
+                            LIMIT {batch_size} OFFSET {offset}
+                        """
+                        cursor.execute(query)
+                        relations_batch = cursor.fetchall()
+
+                        if not relations_batch:
+                            break
+
+                        self.logger.debug(f"{table_name} → {fk['ref_table']}: processing batch {offset // batch_size + 1} ({len(relations_batch)} rows)")
+
+                        for a_val, b_val in relations_batch:
+                            try:
+                                session.run(
+                                    f"""
+                                    MATCH (a:{table_name} {{{fk['column']}: $a}})
+                                    MATCH (b:{fk['ref_table']} {{{fk['ref_column']}: $b}})
+                                    MERGE (a)-[:{rel_type}]->(b)
+                                    """,
+                                    a=a_val,
+                                    b=b_val
+                                )
+                            except Exception as e:
+                                self.logger.error(f"Failed rel {a_val} → {b_val}", exc_info=e)
+
+                        offset += batch_size
+
             conn.close()
-        #end with scope
         self.logger.info("DB population finished")
 
     def _create_constraints(self, session):
